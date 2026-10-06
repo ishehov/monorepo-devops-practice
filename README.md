@@ -1,0 +1,1 @@
+This is a big monorepo for the small app with production-grade approach for tightly coupled microservices and infrastructure.
