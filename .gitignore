@@ -3,3 +3,13 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+.DS_Store
+
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
