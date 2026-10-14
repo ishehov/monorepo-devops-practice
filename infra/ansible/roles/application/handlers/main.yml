@@ -1,0 +1,6 @@
+---
+- name: Restart devops-api
+  ansible.builtin.systemd_service:
+    name: "{{ application_name }}"
+    state: restarted
+    daemon_reload: true

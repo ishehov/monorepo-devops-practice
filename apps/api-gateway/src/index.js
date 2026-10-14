@@ -99,8 +99,10 @@ app.get('/api/status', async (req, res) => {
   }
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`API Gateway listening on port ${PORT}`);
+const HOST = process.env.HOST || '127.0.0.1';
+
+const server = app.listen(PORT, HOST, () => {
+  console.log(`API Gateway listening on ${HOST}:${PORT}`);
 });
 
 async function shutdown(signal) {

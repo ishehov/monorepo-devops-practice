@@ -1,0 +1,23 @@
+[Unit]
+Description=DevOps Practice Frontend
+After=network.target
+
+[Service]
+Type=simple
+User={{ frontend_service_user }}
+Group={{ frontend_service_group }}
+WorkingDirectory={{ frontend_dir }}
+Environment=NODE_ENV=production
+Environment=PORT={{ frontend_port }}
+Environment=HOST={{ frontend_bind_address }}
+ExecStart=/usr/bin/node {{ frontend_dir }}/src/server.js
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

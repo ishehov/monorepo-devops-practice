@@ -1,0 +1,92 @@
+---
+- name: Create frontend service group
+  ansible.builtin.group:
+    name: "{{ frontend_service_group }}"
+    system: true
+    state: present
+
+- name: Create frontend service user
+  ansible.builtin.user:
+    name: "{{ frontend_service_user }}"
+    group: "{{ frontend_service_group }}"
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+    state: present
+
+- name: Create frontend application directory
+  ansible.builtin.file:
+    path: "{{ frontend_dir }}"
+    state: directory
+    owner: "{{ frontend_service_user }}"
+    group: "{{ frontend_service_group }}"
+    mode: "0750"
+
+- name: Deploy frontend package manifest
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../apps/frontend/package.json"
+    dest: "{{ frontend_dir }}/package.json"
+    owner: "{{ frontend_service_user }}"
+    group: "{{ frontend_service_group }}"
+    mode: "0640"
+  register: frontend_package_json
+  notify: Restart devops-frontend
+
+- name: Deploy frontend package lockfile
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../apps/frontend/package-lock.json"
+    dest: "{{ frontend_dir }}/package-lock.json"
+    owner: "{{ frontend_service_user }}"
+    group: "{{ frontend_service_group }}"
+    mode: "0640"
+  register: frontend_package_lock
+  notify: Restart devops-frontend
+
+- name: Deploy frontend source files
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../apps/frontend/src/"
+    dest: "{{ frontend_dir }}/src/"
+    owner: "{{ frontend_service_user }}"
+    group: "{{ frontend_service_group }}"
+    mode: "0640"
+    directory_mode: "0750"
+  notify: Restart devops-frontend
+
+- name: Check whether frontend dependencies are installed
+  ansible.builtin.stat:
+    path: "{{ frontend_dir }}/node_modules/express/package.json"
+  register: frontend_express_installed
+
+- name: Install frontend production dependencies
+  ansible.builtin.command:
+    cmd: npm ci --omit=dev
+    chdir: "{{ frontend_dir }}"
+  when: >
+    frontend_package_json.changed or
+    frontend_package_lock.changed or
+    not frontend_express_installed.stat.exists
+  notify: Restart devops-frontend
+
+- name: Ensure frontend files are owned by the service account
+  ansible.builtin.file:
+    path: "{{ frontend_dir }}"
+    state: directory
+    owner: "{{ frontend_service_user }}"
+    group: "{{ frontend_service_group }}"
+    recurse: true
+
+- name: Deploy frontend systemd unit
+  ansible.builtin.template:
+    src: devops-frontend.service.j2
+    dest: "/etc/systemd/system/{{ frontend_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart devops-frontend
+
+- name: Ensure frontend service is enabled and running
+  ansible.builtin.systemd_service:
+    name: "{{ frontend_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true

@@ -1,0 +1,34 @@
+---
+- name: Install Nginx
+  ansible.builtin.apt:
+    name: "{{ nginx_package }}"
+    state: present
+    update_cache: true
+
+- name: Ensure Nginx is enabled and running
+  ansible.builtin.service:
+    name: "{{ nginx_service }}"
+    enabled: true
+    state: started
+
+- name: Disable the default Nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload Nginx
+
+- name: Configure the application reverse proxy
+  ansible.builtin.template:
+    src: dev-proxy.conf.j2
+    dest: /etc/nginx/sites-available/dev-proxy.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload Nginx
+
+- name: Enable the application reverse proxy
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/dev-proxy.conf
+    dest: /etc/nginx/sites-enabled/dev-proxy.conf
+    state: link
+  notify: Reload Nginx
