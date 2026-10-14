@@ -1,0 +1,10 @@
+---
+mysql_package: mysql-server
+mysql_service: mysql
+
+mysql_database: app_db
+mysql_app_user: app_user
+mysql_app_password: "{{ vault_mysql_app_password }}"
+
+mysql_port: 3306
+mysql_bind_address: "127.0.0.1"

@@ -1,0 +1,10 @@
+---
+frontend_name: devops-frontend
+frontend_service_user: devops-frontend
+frontend_service_group: devops-frontend
+
+frontend_root: /opt/devops-practice
+frontend_dir: "{{ frontend_root }}/frontend"
+
+frontend_port: 8080
+frontend_bind_address: "127.0.0.1"

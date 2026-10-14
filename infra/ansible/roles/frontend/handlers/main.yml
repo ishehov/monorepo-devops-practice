@@ -1,0 +1,6 @@
+---
+- name: Restart devops-frontend
+  ansible.builtin.systemd_service:
+    name: "{{ frontend_name }}"
+    state: restarted
+    daemon_reload: true

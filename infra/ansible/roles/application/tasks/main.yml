@@ -1,0 +1,110 @@
+---
+- name: Create application service group
+  ansible.builtin.group:
+    name: "{{ application_service_group }}"
+    system: true
+    state: present
+
+- name: Create application service user
+  ansible.builtin.user:
+    name: "{{ application_service_user }}"
+    group: "{{ application_service_group }}"
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+    state: present
+
+- name: Create shared application root
+  ansible.builtin.file:
+    path: "{{ application_root }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Create application directory
+  ansible.builtin.file:
+    path: "{{ application_dir }}"
+    state: directory
+    owner: "{{ application_service_user }}"
+    group: "{{ application_service_group }}"
+    mode: "0750"
+
+- name: Create application source directory
+  ansible.builtin.file:
+    path: "{{ application_dir }}/src"
+    state: directory
+    owner: "{{ application_service_user }}"
+    group: "{{ application_service_group }}"
+    mode: "0750"
+
+- name: Deploy API package manifest
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../apps/api-gateway/package.json"
+    dest: "{{ application_dir }}/package.json"
+    owner: "{{ application_service_user }}"
+    group: "{{ application_service_group }}"
+    mode: "0640"
+  register: api_package_json
+
+- name: Deploy API package lockfile
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../apps/api-gateway/package-lock.json"
+    dest: "{{ application_dir }}/package-lock.json"
+    owner: "{{ application_service_user }}"
+    group: "{{ application_service_group }}"
+    mode: "0640"
+  register: api_package_lock
+
+- name: Deploy API source files
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../apps/api-gateway/src/"
+    dest: "{{ application_dir }}/src/"
+    owner: "{{ application_service_user }}"
+    group: "{{ application_service_group }}"
+    mode: "0640"
+    directory_mode: "0750"
+  register: api_source
+  notify: Restart devops-api
+
+- name: Install production dependencies
+  ansible.builtin.command:
+    cmd: npm ci --omit=dev
+    chdir: "{{ application_dir }}"
+  become_user: "{{ application_service_user }}"
+  when: api_package_json.changed or api_package_lock.changed
+  notify: Restart devops-api
+
+- name: Create application configuration directory
+  ansible.builtin.file:
+    path: "{{ application_env_file | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Deploy application environment file
+  ansible.builtin.template:
+    src: api.env.j2
+    dest: "{{ application_env_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: Restart devops-api
+
+- name: Deploy API systemd unit
+  ansible.builtin.template:
+    src: devops-api.service.j2
+    dest: "/etc/systemd/system/{{ application_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart devops-api
+
+- name: Ensure API service is enabled and running
+  ansible.builtin.systemd_service:
+    name: "{{ application_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true

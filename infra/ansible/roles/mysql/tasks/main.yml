@@ -1,0 +1,56 @@
+- name: Install MySQL server
+  ansible.builtin.apt:
+    name: "{{ mysql_package }}"
+    state: present
+    update_cache: true
+
+- name: Ensure MySQL service is enabled and running
+  ansible.builtin.service:
+    name: "{{ mysql_service }}"
+    state: started
+    enabled: true
+
+- name: Install PyMySQL for Ansible MySQL modules
+  ansible.builtin.apt:
+    name: python3-pymysql
+    state: present
+
+- name: Create application database
+  community.mysql.mysql_db:
+    name: "{{ mysql_database }}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Create application database user
+  community.mysql.mysql_user:
+    name: "{{ mysql_app_user }}"
+    password: "{{ mysql_app_password }}"
+    host: "localhost"
+    priv: "{{ mysql_database }}.*:ALL"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Create application status table
+  community.mysql.mysql_query:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_db: "{{ mysql_database }}"
+    query: |
+      CREATE TABLE IF NOT EXISTS system_status (
+        id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        status VARCHAR(32) NOT NULL,
+        message VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id)
+      )
+  changed_when: false
+
+- name: Seed application status
+  community.mysql.mysql_query:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_db: "{{ mysql_database }}"
+    query: |
+      INSERT INTO system_status (status, message)
+      SELECT 'OK', 'Platform is operational'
+      WHERE NOT EXISTS (
+        SELECT 1 FROM system_status
+      );

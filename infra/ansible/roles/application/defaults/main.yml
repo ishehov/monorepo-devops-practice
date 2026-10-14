@@ -1,0 +1,18 @@
+---
+application_name: devops-api
+application_service_user: devops-app
+application_service_group: devops-app
+
+application_root: /opt/devops-practice
+application_dir: "{{ application_root }}/api-gateway"
+application_env_file: /etc/devops-practice/api.env
+
+application_port: 3000
+application_bind_address: "127.0.0.1"
+
+application_db_host: "127.0.0.1"
+application_db_port: 3306
+application_db_name: app_db
+application_db_user: app_user
+
+application_frontend_origin: "http://localhost:8080"

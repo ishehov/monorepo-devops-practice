@@ -1,0 +1,12 @@
+---
+- name: Configure DEV environment
+  hosts: all
+  become: true
+
+  roles:
+    - base
+    - nodejs
+    - mysql
+    - nginx
+    - application
+    - frontend

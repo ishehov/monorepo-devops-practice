@@ -37,6 +37,7 @@ services:
 
     environment:
       PORT: 3000
+      HOST: 0.0.0.0
       FRONTEND_ORIGIN: http://localhost:8080
       DB_HOST: mysql
       DB_PORT: 3306
@@ -57,7 +58,8 @@ services:
 
     environment:
       PORT: 8080
-      API_URL: http://localhost:3000
+      API_HOST: api-gateway
+      API_PORT: 3000
 
     ports:
       - "8080:8080"

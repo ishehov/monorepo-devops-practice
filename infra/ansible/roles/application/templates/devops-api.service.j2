@@ -1,0 +1,22 @@
+[Unit]
+Description=DevOps Practice API Gateway
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User={{ application_service_user }}
+Group={{ application_service_group }}
+WorkingDirectory={{ application_dir }}
+EnvironmentFile={{ application_env_file }}
+ExecStart=/usr/bin/node {{ application_dir }}/src/index.js
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
