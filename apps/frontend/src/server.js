@@ -50,6 +50,10 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.listen(PORT, HOST, () => {
-  console.log(`Frontend listening on ${HOST}:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, HOST, () => {
+    console.log(`Frontend listening on ${HOST}:${PORT}`);
+  });
+}
+
+module.exports = { app };

@@ -101,9 +101,13 @@ app.get('/api/status', async (req, res) => {
 
 const HOST = process.env.HOST || '127.0.0.1';
 
-const server = app.listen(PORT, HOST, () => {
-  console.log(`API Gateway listening on ${HOST}:${PORT}`);
-});
+let server;
+
+if (require.main === module) {
+  server = app.listen(PORT, HOST, () => {
+    console.log(`API Gateway listening on ${HOST}:${PORT}`);
+  });
+}
 
 async function shutdown(signal) {
   console.log(`${signal} received, shutting down`);
@@ -122,3 +126,5 @@ async function shutdown(signal) {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
+
+module.exports = { app, pool };
