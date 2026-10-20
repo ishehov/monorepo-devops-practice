@@ -1,6 +1,6 @@
 # Monorepo architecture
 
-This repository demonstrates a dual-deployment (for now) architecture running a Node.js application via local containers and a fully provisioned host-based Virtual Machine.
+This repository demonstrates a 3-tier-deployment (for now) architecture running a Node.js application via local containers, a fully provisioned host-based Virtual Machine (Dev env) and K3s cluster of one control and two worker nodes (Test env).
 
 ### Application Stack
 
@@ -31,5 +31,20 @@ A host-based deployment running natively on an Ubuntu 24.04 VM, demonstrating in
 **Ansible:** Configures the OS, installs Node.js/MySQL/Nginx, and sets up systemd services.  
 **Process management:** Application components run as unprivileged systemd services bound to loopback interfaces (127.0.0.1).  
 **Routing:** Nginx listens on port 80 and acts as a reverse proxy, forwarding requests to the internal frontend and API ports.
+
+</ul>
+
+### Test environment — Proxmox VE / K3s
+
+<ul>
+
+A Kubernetes-based environment deployed on dedicated Ubuntu 24.04 VMs.
+
+**Orchestration:** A three-node K3s cluster consisting of one control-plane node and two worker nodes.  
+**Networking:** Traefik provides ingress capabilities; CoreDNS provides cluster DNS and service discovery.  
+**System services:** CoreDNS, Traefik, Metrics Server, and the local-path storage provisioner are deployed and running.  
+**Storage:** The local-path provisioner is available for node-local persistent volumes.
+
+**Current state:** Infrastructure provisioning and Kubernetes installation are complete. Application deployment, end-to-end ingress validation, and application-level health checks remain planned.
 
 </ul>
