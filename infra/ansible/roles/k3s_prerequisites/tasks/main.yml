@@ -1,0 +1,77 @@
+
+---
+- name: Persist Kubernetes kernel module configuration
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k3s.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      overlay
+      br_netfilter
+
+- name: Check whether overlay is loaded
+  ansible.builtin.stat:
+    path: /sys/module/overlay
+  register: k3s_overlay_module
+
+- name: Load overlay
+  ansible.builtin.command:
+    argv:
+      - modprobe
+      - overlay
+  when: not k3s_overlay_module.stat.exists
+  changed_when: true
+
+- name: Check whether br_netfilter is loaded
+  ansible.builtin.stat:
+    path: /sys/module/br_netfilter
+  register: k3s_br_netfilter_module
+
+- name: Load br_netfilter
+  ansible.builtin.command:
+    argv:
+      - modprobe
+      - br_netfilter
+  when: not k3s_br_netfilter_module.stat.exists
+  changed_when: true
+
+- name: Persist Kubernetes networking sysctls
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-k3s.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      net.ipv4.ip_forward = 1
+      net.bridge.bridge-nf-call-iptables = 1
+      net.bridge.bridge-nf-call-ip6tables = 1
+
+- name: Apply Kubernetes networking sysctls
+  ansible.builtin.command:
+    argv:
+      - sysctl
+      - -p
+      - /etc/sysctl.d/99-k3s.conf
+  changed_when: false
+
+- name: Read effective Kubernetes networking sysctls
+  ansible.builtin.command:
+    argv:
+      - sysctl
+      - -n
+      - "{{ item }}"
+  loop:
+    - net.ipv4.ip_forward
+    - net.bridge.bridge-nf-call-iptables
+    - net.bridge.bridge-nf-call-ip6tables
+  register: k3s_sysctl_values
+  changed_when: false
+
+- name: Verify Kubernetes networking sysctls
+  ansible.builtin.assert:
+    that:
+      - item.stdout | trim == '1'
+    fail_msg: "Required sysctl {{ item.item }} must equal 1; actual value: {{ item.stdout | trim }}"
+    success_msg: "{{ item.item }} = 1"
+  loop: "{{ k3s_sysctl_values.results }}"
