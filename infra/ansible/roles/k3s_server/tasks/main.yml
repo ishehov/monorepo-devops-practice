@@ -1,0 +1,88 @@
+---
+- name: Create K3s configuration directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure K3s server
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      node-ip: "{{ ansible_host }}"
+      write-kubeconfig-mode: "0600"
+  notify: Restart K3s server
+
+- name: Check the installed K3s version
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - --version
+  register: k3s_server_installed
+  changed_when: false
+  failed_when: false
+
+- name: Download the official K3s installer
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /usr/local/sbin/k3s-install.sh
+    owner: root
+    group: root
+    mode: "0755"
+  when: k3s_version not in (k3s_server_installed.stdout | default(''))
+
+- name: Install the pinned K3s server version
+  ansible.builtin.command:
+    argv:
+      - /bin/sh
+      - /usr/local/sbin/k3s-install.sh
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+    INSTALL_K3S_EXEC: server
+  when: k3s_version not in (k3s_server_installed.stdout | default(''))
+  changed_when: true
+
+- name: Ensure the K3s server service is enabled and started
+  ansible.builtin.systemd_service:
+    name: k3s
+    enabled: true
+    state: started
+
+- name: Apply pending K3s configuration changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify the installed K3s version
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - --version
+  register: k3s_server_version_verified
+  changed_when: false
+  failed_when: k3s_version not in k3s_server_version_verified.stdout
+
+- name: Wait for the Kubernetes API port
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 6443
+    state: started
+    timeout: 180
+
+- name: Wait for the Kubernetes API to respond
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - get
+      - nodes
+      - -o
+      - wide
+  register: k3s_api_check
+  changed_when: false
+  retries: 36
+  delay: 5
+  until: k3s_api_check.rc == 0

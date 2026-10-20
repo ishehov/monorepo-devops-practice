@@ -1,0 +1,6 @@
+---
+- name: Install K3s on TEST worker nodes
+  hosts: k3s_agents
+  become: true
+  roles:
+    - k3s_agent

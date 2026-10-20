@@ -1,0 +1,77 @@
+---
+- name: Create K3s configuration directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure K3s agent
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      server: "{{ k3s_server_url }}"
+      node-ip: "{{ ansible_host }}"
+  notify: Restart K3s agent
+
+- name: Check the installed K3s version
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - --version
+  register: k3s_agent_installed
+  changed_when: false
+  failed_when: false
+
+- name: Download the official K3s installer
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /usr/local/sbin/k3s-install.sh
+    owner: root
+    group: root
+    mode: "0755"
+  when: k3s_version not in (k3s_agent_installed.stdout | default(''))
+
+- name: Read the K3s join token from the control plane
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  delegate_to: test-cp-01
+  become: true
+  register: k3s_agent_token
+  no_log: true
+
+- name: Install the pinned K3s agent version
+  ansible.builtin.command:
+    argv:
+      - /bin/sh
+      - /usr/local/sbin/k3s-install.sh
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+    INSTALL_K3S_EXEC: agent
+    K3S_URL: "{{ k3s_server_url }}"
+    K3S_TOKEN: "{{ k3s_agent_token.content | b64decode | trim }}"
+  when: k3s_version not in (k3s_agent_installed.stdout | default(''))
+  changed_when: true
+  no_log: true
+
+- name: Ensure the K3s agent service is enabled and started
+  ansible.builtin.systemd_service:
+    name: k3s-agent
+    enabled: true
+    state: started
+
+- name: Apply pending K3s configuration changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify the installed K3s version
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - --version
+  register: k3s_agent_version_verified
+  changed_when: false
+  failed_when: k3s_version not in k3s_agent_version_verified.stdout
