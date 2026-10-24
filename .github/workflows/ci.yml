@@ -116,7 +116,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/ishehov/monorepo-devops-practice
             org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.app }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+          cache-to: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && format('type=gha,mode=max,scope={0}', matrix.app) || '' }}
 
   ci-ok:
     name: CI OK
